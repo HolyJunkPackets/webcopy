@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate Special Junk Packets</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: monospace;
+            background: #000000;
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50%;
+            animation: twinkle 3s infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0) translateX(0);
+            }
+            100% {
+                transform: translateY(-100vh) translateX(20px);
+            }
+        }
+
+
+
+        .intro-screen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            text-align: center;
+            opacity: 1;
+            transition: opacity 1s ease-out;
+        }
+
+        .intro-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .ascii-jesus {
+            text-align: center;
+            color: #ffffff;
+            font-family: monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            white-space: pre;
+            margin-bottom: 30px;
+        }
+
+        .ascii-jesus pre {
+            margin: 0;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .jesus-text {
+            color: #ffffff;
+            font-family: monospace;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            min-height: 40px;
+            margin-bottom: 20px;
+        }
+
+        .jesus-text::after {
+            content: '|';
+            animation: blink 1s infinite;
+        }
+
+        .welcome-text {
+            color: #ffffff;
+            font-family: monospace;
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            min-height: 30px;
+            margin-top: 20px;
+        }
+
+        .welcome-text::after {
+            content: '|';
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% {
+                opacity: 1;
+            }
+            51%, 100% {
+                opacity: 0;
+            }
+        }
+
+        .fields-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            width: 100%;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field-label {
+            font-size: 0.9rem;
+            color: #b0b0b0;
+            font-weight: 500;
+        }
+
+        .copy-btn {
+            background: #000000;
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            padding: 20px 48px;
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 70px;
+            min-width: 300px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(-50px) scale(0.9);
+        }
+
+        .copy-btn.visible {
+            visibility: visible;
+            animation: slideIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes slideIn {
+            0% {
+                opacity: 0;
+                transform: translateX(-50px) scale(0.9);
+            }
+            60% {
+                opacity: 0.8;
+                transform: translateX(5px) scale(1.02);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        .copy-btn:hover {
+            background: #ffffff;
+            color: #000000;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        .copy-btn.copied {
+            background: #ffffff;
+            border-color: #ffffff;
+            color: #000000;
+        }
+
+        .regenerate-btn {
+            margin-top: 10px;
+        }
+
+        .copy-hint {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+            display: none;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1;
+        }
+
+        .copy-hint.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars" id="stars"></div>
+    
+        <div class="intro-screen" id="introScreen">
+            <div class="jesus-text" id="jesusText"></div>
+            <div class="ascii-jesus">
+<pre>
+ .======.
+ |      |
+ |      |
+ |      |
+.========'      '========.
+|   _      xxxx      _   |
+|  /_;-.__ / _\  _.-;_\  |
+|     `-._`'`_/'`.-'     |
+'========.`\   /`========'
+  | |  / |
+  |/-.(  |
+  |\_._\ |
+  | \ \`;|
+  |  > |/|
+  | / // |
+  | |//  |
+  | \(\  |
+  |  ``  |
+  |      |
+  |      |
+  |      |
+  |      |
+   |______| 
+
+</pre>
+            </div>
+            <div class="welcome-text" id="welcomeText"></div>
+        </div>
+    
+    <div class="fields-container">
+        <div class="field-group">
+            <button class="copy-btn" id="copyBtn1" data-field="1">Copy I1</button>
+        </div>
+        
+        <div class="field-group">
+            <button class="copy-btn" id="copyBtn2" data-field="2">Copy I2</button>
+        </div>
+        
+        <div class="field-group">
+            <button class="copy-btn" id="copyBtn3" data-field="3">Copy I3</button>
+        </div>
+        
+        <div class="field-group">
+            <button class="copy-btn" id="copyBtn4" data-field="4">Copy I4</button>
+        </div>
+        
+        <div class="field-group">
+            <button class="copy-btn" id="copyBtn5" data-field="5">Copy I5</button>
+        </div>
+        
+        <div class="field-group">
+            <button class="copy-btn regenerate-btn" id="regenerateBtn">Regenerate</button>
+        </div>
+    </div>
+    
+
+    <script>
+        // Utility functions
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function randomChoice(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        // Generate random hex string
+        function randomHex(length) {
+            const bytes = new Uint8Array(length);
+            crypto.getRandomValues(bytes);
+            return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Generate random bytes
+        function randomBytes(length) {
+            const bytes = new Uint8Array(length);
+            crypto.getRandomValues(bytes);
+            return bytes;
+        }
+
+        // Convert Uint8Array to hex string
+        function bytesToHex(bytes) {
+            return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Pack unsigned short (2 bytes) in big-endian
+        function packUint16(value) {
+            const buffer = new ArrayBuffer(2);
+            const view = new DataView(buffer);
+            view.setUint16(0, value, false); // false = big-endian
+            return new Uint8Array(buffer);
+        }
+
+        // Pack unsigned int (4 bytes) in big-endian, return last 3 bytes
+        function packUint24(value) {
+            const buffer = new ArrayBuffer(4);
+            const view = new DataView(buffer);
+            view.setUint32(0, value, false); // false = big-endian
+            const bytes = new Uint8Array(buffer);
+            return bytes.slice(1); // Return last 3 bytes
+        }
+
+        // Convert string to bytes
+        function stringToBytes(str) {
+            return new Uint8Array(str.split('').map(c => c.charCodeAt(0)));
+        }
+
+        // Concatenate Uint8Arrays
+        function concatArrays(...arrays) {
+            const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+            const result = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const arr of arrays) {
+                result.set(arr, offset);
+                offset += arr.length;
+            }
+            return result;
+        }
+
+        // Google domains
+        const googleDomains = [
+            "google.com", "www.google.com", "drive.google.com", 
+            "docs.google.com", "mail.google.com", "accounts.google.com",
+            "photos.google.com", "youtube.com", "gmail.com"
+        ];
+
+        // SIP user agents
+        const sipUserAgents = [
+            "Linphone/5.0.0", "Zoiper 5.0.0", "MicroSIP/3.0.0",
+            "Bria 5.0.0", "Zephyr 2.0.0"
+        ];
+
+        // Generate SIP REGISTER packet (I1)
+        function generateSipRegister() {
+            const callId = randomHex(16);
+            const branch = "z9hG4bK" + randomHex(12);
+            const tag = randomHex(8);
+            const userAgent = randomChoice(sipUserAgents);
+            const expires = randomInt(1800, 7200);
+            const ip1 = randomInt(1, 255);
+            const ip2 = randomInt(1, 255);
+            const ip3 = randomInt(1, 255);
+            const ip4 = randomInt(1, 255);
+
+            const sipPacket = `REGISTER sip:google.com SIP/2.0\r\n` +
+                `Via: SIP/2.0/UDP 192.168.${ip1}.${ip2}:5060;branch=${branch}\r\n` +
+                `Max-Forwards: 70\r\n` +
+                `To: <sip:user@google.com>\r\n` +
+                `From: <sip:user@google.com>;tag=${tag}\r\n` +
+                `Call-ID: ${callId}\r\n` +
+                `CSeq: 1 REGISTER\r\n` +
+                `Contact: <sip:user@192.168.${ip3}.${ip4}:5060>\r\n` +
+                `User-Agent: ${userAgent}\r\n` +
+                `Expires: ${expires}\r\n` +
+                `Content-Length: 0\r\n\r\n`;
+
+            return stringToBytes(sipPacket);
+        }
+
+        // Generate TLS Client Hello (I2)
+        function generateTlsClientHello(hostname) {
+            const version = new Uint8Array([0x03, 0x03]);
+            const randomBytesData = randomBytes(32);
+            const sessionIdLen = randomInt(0, 32);
+            const sessionId = randomBytes(sessionIdLen);
+
+            const cipherSuites = [
+                new Uint8Array([0x13, 0x02]),
+                new Uint8Array([0x13, 0x03]),
+                new Uint8Array([0xc0, 0x2c]),
+                new Uint8Array([0xc0, 0x30]),
+                new Uint8Array([0xcc, 0xa9]),
+                new Uint8Array([0xcc, 0xa8]),
+                new Uint8Array([0xc0, 0x2b]),
+                new Uint8Array([0xc0, 0x2f])
+            ];
+            const cipherSuite = randomChoice(cipherSuites);
+            const cipherSuitesData = concatArrays(new Uint8Array([0x00, 0x02]), cipherSuite);
+
+            const compression = new Uint8Array([0x01, 0x00]);
+
+            const serverNameBytes = stringToBytes(hostname);
+            const sniExt = concatArrays(
+                new Uint8Array([0x00, 0x00]),
+                packUint16(serverNameBytes.length + 5),
+                new Uint8Array([0x00]),
+                packUint16(serverNameBytes.length + 3),
+                new Uint8Array([0x00]),
+                packUint16(serverNameBytes.length),
+                serverNameBytes
+            );
+
+            const extensions = concatArrays(
+                sniExt,
+                new Uint8Array([0x00, 0x0b, 0x00, 0x04, 0x03, 0x00, 0x01, 0x02, 0x00, 0x0a, 0x00, 0x0a, 0x00, 0x08]),
+                randomBytes(8)
+            );
+
+            const handshakeContent = concatArrays(
+                version,
+                randomBytesData,
+                new Uint8Array([sessionIdLen]),
+                sessionId,
+                cipherSuitesData,
+                compression,
+                packUint16(extensions.length),
+                extensions
+            );
+
+            const handshake = concatArrays(
+                new Uint8Array([0x01]),
+                packUint24(handshakeContent.length),
+                handshakeContent
+            );
+
+            const record = concatArrays(
+                new Uint8Array([0x16]),
+                version,
+                packUint16(handshake.length),
+                handshake
+            );
+
+            return record;
+        }
+
+        // Generate TLS Server Hello (I3)
+        function generateTlsServerCombined() {
+            try {
+                const version = new Uint8Array([0x03, 0x03]);
+                const serverRandom = randomBytes(32);
+                const sessionIdLen = randomInt(0, 16);
+                const sessionId = sessionIdLen > 0 
+                    ? concatArrays(new Uint8Array([sessionIdLen]), randomBytes(sessionIdLen))
+                    : new Uint8Array([0x00]);
+
+                const cipherSuites = [
+                    new Uint8Array([0x13, 0x01]),
+                    new Uint8Array([0x13, 0x02]),
+                    new Uint8Array([0x13, 0x03]),
+                    new Uint8Array([0xc0, 0x2c])
+                ];
+                const cipherSuite = randomChoice(cipherSuites);
+                const compression = new Uint8Array([0x00]);
+                const extensions = new Uint8Array([]);
+
+                const serverHelloContent = concatArrays(
+                    version,
+                    serverRandom,
+                    sessionId,
+                    cipherSuite,
+                    compression,
+                    packUint16(extensions.length),
+                    extensions
+                );
+
+                const handshakeType = new Uint8Array([0x02]);
+                const handshake = concatArrays(
+                    handshakeType,
+                    packUint24(serverHelloContent.length),
+                    serverHelloContent
+                );
+
+                const recordType = new Uint8Array([0x16]);
+                const recordVersion = new Uint8Array([0x03, 0x03]);
+                const record = concatArrays(
+                    recordType,
+                    recordVersion,
+                    packUint16(handshake.length),
+                    handshake
+                );
+
+                return record;
+            } catch (e) {
+                // Fallback
+                return concatArrays(
+                    new Uint8Array([0x16, 0x03, 0x03, 0x00, 0x31, 0x02, 0x00, 0x00, 0x2d, 0x03, 0x03]),
+                    randomBytes(32),
+                    new Uint8Array([0x00, 0x13, 0x02, 0x00, 0x00])
+                );
+            }
+        }
+
+        // Generate TLS Client Combined (I4)
+        function generateTlsClientCombined() {
+            const keyData = randomBytes(128);
+            const clientKeyExchange = concatArrays(
+                new Uint8Array([0x10]),
+                packUint24(keyData.length),
+                keyData
+            );
+
+            const changeCipherSpec = new Uint8Array([0x14, 0x03, 0x03, 0x00, 0x01, 0x01]);
+
+            const finishedData = randomBytes(52);
+            const finished = concatArrays(
+                new Uint8Array([0x16, 0x03, 0x03]),
+                packUint16(finishedData.length),
+                finishedData
+            );
+
+            return concatArrays(clientKeyExchange, changeCipherSpec, finished);
+        }
+
+        // Generate HTTP over TLS (I5)
+        function generateHttpOverTls() {
+            try {
+                const httpMethods = ['GET', 'POST', 'HEAD'];
+                const httpPaths = ['/', '/search', '/mail', '/drive', '/photos', '/images', '/favicon.ico'];
+                
+                const method = randomChoice(httpMethods);
+                const path = randomChoice(httpPaths);
+                const host = randomChoice(googleDomains);
+
+                let httpRequest = `${method} ${path} HTTP/1.1\r\n`;
+                httpRequest += `Host: ${host}\r\n`;
+                httpRequest += "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36\r\n";
+                httpRequest += "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n";
+                httpRequest += "Accept-Language: en-US,en;q=0.5\r\n";
+                httpRequest += "Accept-Encoding: gzip, deflate, br\r\n";
+                httpRequest += "Connection: keep-alive\r\n";
+
+                if (method === 'POST') {
+                    httpRequest += "Content-Type: application/x-www-form-urlencoded\r\n";
+                    httpRequest += "Content-Length: 0\r\n";
+                }
+
+                httpRequest += "\r\n";
+
+                const httpRequestBytes = stringToBytes(httpRequest);
+                const tlsHeader = new Uint8Array([0x17, 0x03, 0x03]);
+                const tlsPayload = concatArrays(
+                    tlsHeader,
+                    packUint16(httpRequestBytes.length),
+                    httpRequestBytes
+                );
+
+                return tlsPayload;
+            } catch (e) {
+                // Fallback
+                const fallbackRequest = stringToBytes("GET / HTTP/1.1\r\nHost: google.com\r\n\r\n");
+                return concatArrays(
+                    new Uint8Array([0x17, 0x03, 0x03]),
+                    packUint16(fallbackRequest.length),
+                    fallbackRequest
+                );
+            }
+        }
+
+        // Format packet to the required format: <b 0x{hex}><r 16><c><t><r 32>
+        function formatPacket(packetBytes) {
+            const hex = bytesToHex(packetBytes);
+            return `<b 0x${hex}><r 16><c><t><r 32>`;
+        }
+
+        // Generate all packets
+        function generatePackets() {
+            const domain = randomChoice(googleDomains);
+            
+            const i1 = formatPacket(generateSipRegister());
+            const i2 = formatPacket(generateTlsClientHello(domain));
+            const i3 = formatPacket(generateTlsServerCombined());
+            const i4 = formatPacket(generateTlsClientCombined());
+            const i5 = formatPacket(generateHttpOverTls());
+
+            return { i1, i2, i3, i4, i5 };
+        }
+
+        // Store current values
+        let currentValues = {
+            field1: '',
+            field2: '',
+            field3: '',
+            field4: '',
+            field5: ''
+        };
+
+        // Copy to clipboard function
+        async function copyToClipboard(text, buttonElement) {
+            try {
+                await navigator.clipboard.writeText(text);
+                
+                // Visual feedback
+                buttonElement.classList.add('copied');
+                const originalText = buttonElement.textContent;
+                buttonElement.textContent = 'Copied!';
+                
+                setTimeout(() => {
+                    buttonElement.classList.remove('copied');
+                    buttonElement.textContent = originalText;
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy to clipboard');
+            }
+        }
+
+        // Show copy buttons with animation
+        function showCopyButtons() {
+            // Reset all buttons first
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById(`copyBtn${i}`);
+                btn.classList.remove('visible');
+                // Force reflow to reset animation
+                void btn.offsetWidth;
+            }
+            const regenerateBtn = document.getElementById('regenerateBtn');
+            if (regenerateBtn) {
+                regenerateBtn.classList.remove('visible');
+                void regenerateBtn.offsetWidth;
+            }
+            
+            // Small delay to ensure reset is complete
+            setTimeout(() => {
+                for (let i = 1; i <= 5; i++) {
+                    const btn = document.getElementById(`copyBtn${i}`);
+                    // Add delay for staggered animation
+                    setTimeout(() => {
+                        btn.classList.add('visible');
+                    }, i * 150); // 150ms delay between each button for smoother effect
+                }
+                // Show regenerate button after copy buttons
+                setTimeout(() => {
+                    if (regenerateBtn) {
+                        regenerateBtn.classList.add('visible');
+                    }
+                }, 900);
+            }, 50);
+        }
+
+        // Create stars
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            const numStars = 200;
+            
+            for (let i = 0; i < numStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                
+                // Random position
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                star.style.left = x + '%';
+                star.style.top = y + '%';
+                
+                // Random size (3-6px)
+                const size = Math.random() * 3 + 3;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                
+                // Random animation delay for twinkling
+                const delay = Math.random() * 3;
+                star.style.animationDelay = delay + 's';
+                
+                // Random animation duration for floating
+                const floatDuration = 20 + Math.random() * 30;
+                star.style.animation = `twinkle 3s infinite ease-in-out, float ${floatDuration}s linear infinite`;
+                star.style.animationDelay = `${delay}s, ${Math.random() * 5}s`;
+                
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // Typewriter effect
+        function typeWriter(element, text, speed = 100) {
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    element.textContent = text.substring(0, i + 1);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create stars
+            createStars();
+            
+            // Show intro screen
+            const introScreen = document.getElementById('introScreen');
+            const jesusText = document.getElementById('jesusText');
+            const welcomeText = document.getElementById('welcomeText');
+            
+            // Start typewriter effect for "By JEESUScrised" first
+            setTimeout(() => {
+                typeWriter(jesusText, 'By JEESUScrised', 80);
+            }, 500);
+            
+            // Then start typewriter effect for "Welcome to the net, kid." after first text finishes
+            setTimeout(() => {
+                typeWriter(welcomeText, 'Welcome to the net, kid.', 80);
+            }, 500 + ('By JEESUScrised'.length * 80) + 300); // Wait for first text + small delay
+            
+            // Hide intro and auto-generate after both texts finish + delay
+            const totalTextLength = 'By JEESUScrised'.length + 'Welcome to the net, kid.'.length;
+            const totalTime = 500 + (totalTextLength * 80) + 1000; // Start delay + typing time + extra delay
+            
+            setTimeout(() => {
+                introScreen.classList.add('hidden');
+                
+                // Auto-generate packets after intro disappears
+                setTimeout(() => {
+                    const packets = generatePackets();
+                    
+                    // Store values (not displayed)
+                    currentValues.field1 = packets.i1;
+                    currentValues.field2 = packets.i2;
+                    currentValues.field3 = packets.i3;
+                    currentValues.field4 = packets.i4;
+                    currentValues.field5 = packets.i5;
+
+                    // Show copy buttons
+                    showCopyButtons();
+                }, 1000); // Wait for fade out animation
+            }, totalTime);
+            
+            // Copy button clicks
+            for (let i = 1; i <= 5; i++) {
+                const buttonElement = document.getElementById(`copyBtn${i}`);
+                buttonElement.addEventListener('click', function() {
+                    const value = currentValues[`field${i}`];
+                    if (value) {
+                        copyToClipboard(value, buttonElement);
+                    }
+                });
+            }
+            
+            // Regenerate button click
+            const regenerateBtn = document.getElementById('regenerateBtn');
+            if (regenerateBtn) {
+                regenerateBtn.addEventListener('click', function() {
+                    const packets = generatePackets();
+                    
+                    // Store new values
+                    currentValues.field1 = packets.i1;
+                    currentValues.field2 = packets.i2;
+                    currentValues.field3 = packets.i3;
+                    currentValues.field4 = packets.i4;
+                    currentValues.field5 = packets.i5;
+
+                    // Restart animation for copy buttons
+                    showCopyButtons();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
